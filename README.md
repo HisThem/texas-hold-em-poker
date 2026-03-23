@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Texas Hold'em Multiplayer
 
-# Run and deploy your AI Studio app
+This project now contains:
 
-This contains everything you need to run your app locally.
+- A React/Vite frontend on port `3000`
+- A NestJS + Socket.IO backend on port `3101`
+- SQLite persistence at `server/data/holdem.sqlite`
 
-View your app in AI Studio: https://ai.studio/apps/118d96b5-0469-4edf-b11a-7226bc14fbda
+## Run locally
 
-## Run Locally
+1. Install dependencies
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+```
 
+2. Start the backend
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+npm run dev:server
+```
+
+3. Start the frontend
+
+```bash
+npm run dev:client
+```
+
+4. Open `http://localhost:3000`
+
+## Current multiplayer flow
+
+- Enter a nickname and a 6-digit room code
+- A new room is created automatically if the code does not exist
+- Reusing the same room code joins the same room
+- The first player in a room is the host
+- Hosts can change player count, presets, removed ranks, and bot-fill behavior
+
+## Checks
+
+```bash
+npm run lint
+npm run build
+```
