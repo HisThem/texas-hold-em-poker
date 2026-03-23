@@ -63,13 +63,14 @@ export const ChipStack: React.FC<ChipStackProps> = ({ amount, orientation = 'hor
           {Array.from({ length: Math.min(stack.count, 8) }).map((_, i) => (
             <motion.div
               key={i}
-              initial={{ y: -100, opacity: 0, rotateX: 45 }}
-              animate={{ y: 0, opacity: 1, rotateX: 0 }}
-              transition={{ 
-                type: 'spring', 
-                damping: 12, 
-                stiffness: 200, 
-                delay: (stackIdx * 0.04) + (i * 0.02) 
+              initial={{ y: compact ? -18 : -24, opacity: 0, scale: 0.96 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              transition={{
+                type: 'spring',
+                damping: 15,
+                stiffness: 250,
+                mass: 0.85,
+                delay: (stackIdx * 0.04) + (i * 0.02)
               }}
               className="absolute left-0"
               style={{ 
