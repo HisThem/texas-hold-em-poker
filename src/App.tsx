@@ -12,7 +12,7 @@ import {
 import { evaluateHand } from './engine';
 import { CardComponent } from './components/Card';
 import { ChipStack } from './components/Chips';
-import { User, Trophy, Coins, RotateCcw, Play } from 'lucide-react';
+import { User, Trophy, Coins, Play } from 'lucide-react';
 
 const INITIAL_CHIPS = 1000;
 const SMALL_BLIND = 10;
@@ -57,7 +57,7 @@ export default function App() {
   const isCompactLayout = isMobile || isShortViewport;
   const isUltraCompact = viewport.height > 0 && viewport.height < 430;
   const tableTilt = isCompactLayout ? 26 : 35;
-  const tableScale = isUltraCompact ? 0.68 : isCompactLayout ? 0.82 : 1;
+  const tableScale = isUltraCompact ? 0.78 : isCompactLayout ? 0.9 : 1.04;
 
   const initGame = useCallback((numPlayers: number = 6) => {
     const deck = createDeck();
@@ -346,29 +346,8 @@ export default function App() {
 
   return (
     <div className="h-[100dvh] bg-slate-900 text-white font-sans overflow-hidden relative">
-      {/* Floating Top Controls */}
-      <div className={`absolute top-3 left-3 right-3 z-50 flex items-start justify-between pointer-events-none ${isCompactLayout ? 'top-2 left-2 right-2' : ''}`}>
-        <div className={`pointer-events-auto flex items-center bg-slate-800/85 backdrop-blur-md border border-white/10 shadow-xl ${isCompactLayout ? 'gap-2 px-2.5 py-1.5 rounded-2xl' : 'gap-3 px-3 py-2 rounded-3xl'}`}>
-          <div className={`${isCompactLayout ? 'w-7 h-7' : 'w-9 h-9'} bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20`}>
-            <Coins className="text-white" size={isCompactLayout ? 16 : 20} />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className={`${isCompactLayout ? 'text-[10px]' : 'text-xs'} uppercase tracking-[0.2em] text-white/45`}>Bankroll</span>
-            <span className={`${isCompactLayout ? 'text-sm' : 'text-base'} font-mono font-bold text-yellow-400`}>${user?.chips || 0}</span>
-          </div>
-        </div>
-
-        <button 
-          onClick={() => initGame()}
-          className={`pointer-events-auto bg-slate-800/85 backdrop-blur-md border border-white/10 hover:bg-white/10 rounded-full shadow-xl transition-colors ${isCompactLayout ? 'p-2' : 'p-3'}`}
-          title="Reset Game"
-        >
-          <RotateCcw size={isCompactLayout ? 16 : 18} />
-        </button>
-      </div>
-
       {/* Game Table */}
-      <main className={`h-full relative flex items-center justify-center perspective-[1500px] overflow-hidden ${isCompactLayout ? 'px-2 py-2 sm:px-4' : 'p-4 sm:p-16'}`}>
+      <main className={`h-full relative flex items-center justify-center perspective-[1500px] overflow-hidden ${isCompactLayout ? 'px-1 py-1 sm:px-2' : 'p-2 sm:p-8'}`}>
         {/* The Table Wrapper with 3D Rotation (No clipping) */}
         <div 
           className="relative w-full max-w-5xl max-h-full aspect-[16/9] flex items-center justify-center transition-transform duration-700"
@@ -395,11 +374,11 @@ export default function App() {
                   transition={{ duration: 0.4 }}
                   className={`text-center w-full ${isCompactLayout ? 'px-6' : 'px-12'}`}
                 >
-                  <div className={`text-white font-black uppercase tracking-tighter leading-none whitespace-nowrap opacity-30 select-none ${isCompactLayout ? 'text-[6vw] sm:text-[9vw]' : 'text-[7vw] sm:text-[13vw]'}`}>
+                  <div className={`text-white font-black uppercase tracking-tighter leading-none whitespace-nowrap opacity-60 select-none ${isCompactLayout ? 'text-[13vw] sm:text-[17vw]' : 'text-[7vw] sm:text-[13vw]'}`}>
                     {gameMessage.title}
                   </div>
                   {gameMessage.subtitle && !isUltraCompact && (
-                    <div className={`text-white font-bold uppercase mt-2 opacity-50 ${isCompactLayout ? 'text-xs sm:text-sm tracking-[0.25em]' : 'text-lg sm:text-2xl tracking-[0.5em]'}`}>
+                    <div className={`text-white font-bold uppercase mt-2 opacity-50 ${isCompactLayout ? 'text-sm sm:text-base tracking-[0.25em]' : 'text-xl sm:text-3xl tracking-[0.5em]'}`}>
                       {gameMessage.subtitle}
                     </div>
                   )}
@@ -429,10 +408,10 @@ export default function App() {
 
           {/* Pot Display */}
           <div className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center ${isCompactLayout ? 'top-[62%]' : 'top-[60%]'}`} style={{ transform: 'translateZ(20px)' }}>
-            <div className={`text-emerald-200/50 uppercase font-bold tracking-widest mb-1 ${isCompactLayout ? 'text-[8px]' : 'text-[10px] sm:text-xs'}`}>Total Pot</div>
+            <div className={`text-emerald-200/50 uppercase font-bold tracking-widest mb-1 ${isCompactLayout ? 'text-[10px]' : 'text-xs sm:text-sm'}`}>Total Pot</div>
             <div className={`bg-black/40 backdrop-blur-sm rounded-full border border-white/10 flex items-center gap-2 ${isCompactLayout ? 'px-3 py-0.5' : 'px-4 py-1'}`}>
               <Coins size={isCompactLayout ? 12 : 14} className="text-yellow-400" />
-              <span className={`${isCompactLayout ? 'text-sm sm:text-lg' : 'text-lg sm:text-2xl'} font-mono font-bold text-yellow-400`}>${gameState.pot}</span>
+              <span className={`${isCompactLayout ? 'text-lg sm:text-xl' : 'text-xl sm:text-3xl'} font-mono font-bold text-yellow-400`}>${gameState.pot}</span>
             </div>
           </div>
 
@@ -441,19 +420,19 @@ export default function App() {
             // Define positions for 6 players in a landscape-friendly layout
             // Adjusted for 3D perspective: cards closer to edge, chips in front
             const positions = isCompactLayout ? [
-              { info: { left: '31%', top: '90%' }, cards: { left: '51%', top: '84%' }, chips: { left: '51%', top: '73%' }, orient: 'horizontal' },
-              { info: { left: '91%', top: '66%' }, cards: { left: '78%', top: '64%' }, chips: { left: '69%', top: '64%' }, orient: 'vertical' },
-              { info: { left: '91%', top: '34%' }, cards: { left: '78%', top: '36%' }, chips: { left: '69%', top: '36%' }, orient: 'vertical' },
-              { info: { left: '31%', top: '10%' }, cards: { left: '51%', top: '16%' }, chips: { left: '51%', top: '28%' }, orient: 'horizontal' },
-              { info: { left: '9%', top: '34%' }, cards: { left: '22%', top: '36%' }, chips: { left: '31%', top: '36%' }, orient: 'vertical' },
-              { info: { left: '9%', top: '66%' }, cards: { left: '22%', top: '64%' }, chips: { left: '31%', top: '64%' }, orient: 'vertical' },
+              { info: { left: '36%', top: '93%' }, cards: { left: '51%', top: '92%' }, chips: { left: '66%', top: '85%' }, orient: 'horizontal' },
+              { info: { left: '91%', top: '66%' }, cards: { left: '78%', top: '64%' }, chips: { left: '69%', top: '64%' }, orient: 'horizontal' },
+              { info: { left: '91%', top: '34%' }, cards: { left: '78%', top: '36%' }, chips: { left: '69%', top: '36%' }, orient: 'horizontal' },
+              { info: { left: '36%', top: '10%' }, cards: { left: '51%', top: '16%' }, chips: { left: '51%', top: '28%' }, orient: 'horizontal' },
+              { info: { left: '9%', top: '34%' }, cards: { left: '22%', top: '36%' }, chips: { left: '31%', top: '36%' }, orient: 'horizontal' },
+              { info: { left: '9%', top: '66%' }, cards: { left: '22%', top: '64%' }, chips: { left: '31%', top: '64%' }, orient: 'horizontal' },
             ] : [
-              { info: { left: '28%', top: '92%' }, cards: { left: '52%', top: '92%' }, chips: { left: '52%', top: '78%' }, orient: 'horizontal' }, // P0: Bottom Center (User)
-              { info: { left: '105%', top: '65%' }, cards: { left: '88%', top: '65%' }, chips: { left: '76%', top: '65%' }, orient: 'vertical' },   // P1: Right Bottom
-              { info: { left: '105%', top: '35%' }, cards: { left: '88%', top: '35%' }, chips: { left: '76%', top: '35%' }, orient: 'vertical' },   // P2: Right Top
+              { info: { left: '28%', top: '92%' }, cards: { left: '52%', top: '97%' }, chips: { left: '66%', top: '85%' }, orient: 'horizontal' }, // P0: Bottom Center (User)
+              { info: { left: '105%', top: '65%' }, cards: { left: '88%', top: '65%' }, chips: { left: '76%', top: '65%' }, orient: 'horizontal' },   // P1: Right Bottom
+              { info: { left: '105%', top: '35%' }, cards: { left: '88%', top: '35%' }, chips: { left: '76%', top: '35%' }, orient: 'horizontal' },   // P2: Right Top
               { info: { left: '28%', top: '8%' }, cards: { left: '52%', top: '8%' }, chips: { left: '52%', top: '25%' }, orient: 'horizontal' }, // P3: Top Center
-              { info: { left: '-5%', top: '35%' }, cards: { left: '12%', top: '35%' }, chips: { left: '24%', top: '35%' }, orient: 'vertical' },    // P4: Left Top
-              { info: { left: '-5%', top: '65%' }, cards: { left: '12%', top: '65%' }, chips: { left: '24%', top: '65%' }, orient: 'vertical' },    // P5: Left Bottom
+              { info: { left: '-5%', top: '35%' }, cards: { left: '12%', top: '35%' }, chips: { left: '24%', top: '35%' }, orient: 'horizontal' },    // P4: Left Top
+              { info: { left: '-5%', top: '65%' }, cards: { left: '12%', top: '65%' }, chips: { left: '24%', top: '65%' }, orient: 'horizontal' },    // P5: Left Bottom
             ];
 
             const pos = positions[i] || positions[0];
@@ -471,30 +450,30 @@ export default function App() {
                     transform: `translate(-50%, -50%) translateZ(40px) rotateX(-${tableTilt}deg)`,
                   }}
                 >
-                  <div className={`flex ${pos.orient === 'vertical' ? 'flex-col' : 'flex-row'} items-center ${isCompactLayout ? 'gap-1.5' : 'gap-2'} ${isCompactLayout ? 'p-1.5' : 'p-1.5 sm:p-2'} rounded-2xl bg-slate-800/90 backdrop-blur-md border shadow-2xl ${
+                  <div className={`flex ${pos.orient === 'vertical' ? 'flex-col' : 'flex-row'} items-center ${isCompactLayout ? 'gap-2' : 'gap-2.5'} ${isCompactLayout ? 'p-2' : 'p-2 sm:p-2.5'} rounded-2xl bg-slate-800/90 backdrop-blur-md border shadow-2xl ${
                     pos.orient === 'vertical'
-                      ? isCompactLayout ? 'min-w-[64px] py-1.5' : 'min-w-[80px] sm:min-w-[100px] py-2 sm:py-3'
-                      : isCompactLayout ? 'min-w-[96px]' : 'min-w-[120px] sm:min-w-[140px]'
+                      ? isCompactLayout ? 'min-w-[76px] py-2' : 'min-w-[88px] sm:min-w-[108px] py-2.5 sm:py-3'
+                      : isCompactLayout ? 'min-w-[112px]' : 'min-w-[128px] sm:min-w-[148px]'
                   } ${
                     isCurrent ? 'border-yellow-400 ring-2 ring-yellow-400/20 scale-105' : 
                     isWinner ? 'border-emerald-400' : 'border-white/10'
                   }`}>
                     {/* Avatar */}
-                    <div className={`${isCompactLayout ? 'w-7 h-7' : 'w-8 h-8 sm:w-12 sm:h-12'} rounded-full border-2 flex items-center justify-center relative flex-shrink-0 ${
+                    <div className={`${isCompactLayout ? 'w-8 h-8' : 'w-9 h-9 sm:w-12 sm:h-12'} rounded-full border-2 flex items-center justify-center relative flex-shrink-0 ${
                       isCurrent ? 'border-yellow-400 bg-yellow-400/20' : 
                       isWinner ? 'border-emerald-400 bg-emerald-400/20' : 
                       player.isFolded ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-white/20 bg-slate-900'
                     }`}>
-                      <User size={isCompactLayout ? 14 : isMobile ? 16 : 20} className={player.isFolded ? 'text-slate-500' : 'text-white'} />
+                      <User size={isCompactLayout ? 16 : isMobile ? 18 : 20} className={player.isFolded ? 'text-slate-500' : 'text-white'} />
                       {player.isDealer && (
-                        <div className={`absolute -right-1 -top-1 bg-white text-black rounded-full flex items-center justify-center font-bold border border-slate-900 ${isCompactLayout ? 'w-3.5 h-3.5 text-[7px]' : 'w-4 h-4 sm:w-5 sm:h-5 text-[8px] sm:text-[9px]'}`}>D</div>
+                        <div className={`absolute -right-1 -top-1 bg-white text-black rounded-full flex items-center justify-center font-bold border border-slate-900 ${isCompactLayout ? 'w-4 h-4 text-[8px]' : 'w-4 h-4 sm:w-5 sm:h-5 text-[8px] sm:text-[9px]'}`}>D</div>
                       )}
                     </div>
 
                     {/* Name & Chips */}
                     <div className={`flex flex-col justify-center overflow-hidden ${pos.orient === 'vertical' ? 'items-center' : ''}`}>
-                      <div className={`${isCompactLayout ? 'text-[9px]' : 'text-[11px] sm:text-xs'} font-bold truncate text-white/90 w-full text-center`}>{player.name}</div>
-                      <div className={`${isCompactLayout ? 'text-[8px]' : 'text-[10px] sm:text-xs'} text-emerald-400 font-mono font-bold`}>${player.chips}</div>
+                      <div className={`${isCompactLayout ? 'text-xs' : 'text-sm sm:text-base'} font-bold truncate text-white/90 w-full text-center`}>{player.name}</div>
+                      <div className={`${isCompactLayout ? 'text-[10px]' : 'text-xs sm:text-sm'} text-emerald-400 font-mono font-bold`}>${player.chips}</div>
                     </div>
 
                     {/* Action Bubble */}
@@ -502,7 +481,7 @@ export default function App() {
                       <motion.div 
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className={`absolute left-1/2 -translate-x-1/2 bg-white text-slate-900 font-bold rounded-full shadow-lg whitespace-nowrap ${isCompactLayout ? '-top-5 text-[8px] px-1.5 py-0.5' : '-top-6 text-[9px] px-2 py-0.5'}`}
+                        className={`absolute left-1/2 -translate-x-1/2 bg-white text-slate-900 font-bold rounded-full shadow-lg whitespace-nowrap ${isCompactLayout ? '-top-5 text-[9px] px-1.5 py-0.5' : '-top-6 text-[10px] px-2 py-0.5'}`}
                       >
                         {player.lastAction}
                       </motion.div>
@@ -530,7 +509,7 @@ export default function App() {
                         rank={card.rank} 
                         compact={isCompactLayout}
                         hidden={player.id !== 'user' && gameState.phase !== 'showdown'} 
-                        className={`${isCompactLayout ? 'scale-90' : 'scale-75 sm:scale-90'} ${player.isFolded ? 'grayscale opacity-30' : 'shadow-xl'}`}
+                        className={`${isCompactLayout ? 'scale-100' : 'scale-[0.85] sm:scale-95'} ${player.isFolded ? 'grayscale opacity-30' : 'shadow-xl'}`}
                       />
                     </motion.div>
                   ))}
@@ -559,7 +538,7 @@ export default function App() {
           {gameState.phase === 'waiting' || gameState.phase === 'showdown' ? (
             <button 
               onClick={startHand}
-              className={`group relative flex items-center bg-emerald-500/95 hover:bg-emerald-400 text-white rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20 border border-white/10 ${isCompactLayout ? 'gap-2 px-5 py-2 text-base' : 'gap-3 px-8 py-3 text-lg'}`}
+              className={`group relative flex items-center bg-emerald-500/95 hover:bg-emerald-400 text-white rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20 border border-white/10 ${isCompactLayout ? 'gap-2 px-5 py-2 text-lg' : 'gap-3 px-8 py-3 text-xl'}`}
             >
               <Play fill="currentColor" size={isCompactLayout ? 18 : 20} />
               {gameState.phase === 'showdown' ? 'Next Hand' : 'Start Hand'}
@@ -570,14 +549,14 @@ export default function App() {
                 <button 
                   disabled={!isUserTurn}
                   onClick={() => handleAction('fold')}
-                  className={`bg-slate-800/90 backdrop-blur-md hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all border border-white/10 shadow-xl whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
+                  className={`bg-slate-800/90 backdrop-blur-md hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all border border-white/10 shadow-xl whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-sm' : 'px-4 py-3 text-base'}`}
                 >
                   Fold
                 </button>
                 <button 
                   disabled={!isUserTurn}
                   onClick={() => handleAction(gameState.currentBet > (user?.bet || 0) ? 'call' : 'check')}
-                  className={`bg-blue-600/95 backdrop-blur-md hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all shadow-xl shadow-blue-600/20 border border-white/10 whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
+                  className={`bg-blue-600/95 backdrop-blur-md hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all shadow-xl shadow-blue-600/20 border border-white/10 whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-sm' : 'px-4 py-3 text-base'}`}
                 >
                   {gameState.currentBet > (user?.bet || 0) ? `Call $${gameState.currentBet - (user?.bet || 0)}` : 'Check'}
                 </button>
@@ -585,8 +564,8 @@ export default function App() {
 
               <div className={`flex items-center justify-center bg-slate-900/78 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl ${isCompactLayout ? 'gap-1.5 px-1.5 py-1.5' : 'gap-2 px-2 py-2'}`}>
                 <div className={`flex flex-col items-center ${isCompactLayout ? 'px-0.5' : 'px-1.5'}`}>
-                  <span className={`${isCompactLayout ? 'text-[7px]' : 'text-[9px]'} font-bold text-slate-400 uppercase tracking-widest`}>Raise To</span>
-                  <span className={`${isCompactLayout ? 'text-sm' : 'text-lg'} font-mono font-bold text-yellow-400`}>${betAmount}</span>
+                  <span className={`${isCompactLayout ? 'text-[8px]' : 'text-[10px]'} font-bold text-slate-400 uppercase tracking-widest`}>Raise To</span>
+                  <span className={`${isCompactLayout ? 'text-base' : 'text-xl'} font-mono font-bold text-yellow-400`}>${betAmount}</span>
                 </div>
                 <div className="flex gap-1 overflow-x-auto no-scrollbar">
                   {[5, 10, 50, 100].map(val => (
@@ -594,7 +573,7 @@ export default function App() {
                       key={val}
                       disabled={!isUserTurn}
                       onClick={() => setBetAmount(prev => Math.min(user?.chips || 0, prev + val))}
-                      className={`${isCompactLayout ? 'w-7 h-7 text-[9px]' : 'w-9 h-9 text-[11px]'} bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex items-center justify-center font-bold transition-colors flex-shrink-0`}
+                      className={`${isCompactLayout ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-xs'} bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex items-center justify-center font-bold transition-colors flex-shrink-0`}
                     >
                       +{val}
                     </button>
@@ -602,7 +581,7 @@ export default function App() {
                   <button 
                     disabled={!isUserTurn}
                     onClick={() => setBetAmount(gameState.currentBet + BIG_BLIND)}
-                    className={`${isCompactLayout ? 'w-7 h-7 text-[9px]' : 'w-9 h-9 text-[11px]'} bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex items-center justify-center font-bold transition-colors flex-shrink-0`}
+                    className={`${isCompactLayout ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-xs'} bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex items-center justify-center font-bold transition-colors flex-shrink-0`}
                     >
                       Min
                     </button>
@@ -610,7 +589,7 @@ export default function App() {
                 <button 
                   disabled={!isUserTurn || betAmount <= gameState.currentBet}
                   onClick={() => handleAction('raise', betAmount)}
-                  className={`bg-emerald-600/95 backdrop-blur-md hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all shadow-xl shadow-emerald-600/20 border border-white/10 whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
+                  className={`bg-emerald-600/95 backdrop-blur-md hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all shadow-xl shadow-emerald-600/20 border border-white/10 whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-sm' : 'px-4 py-3 text-base'}`}
                 >
                   Raise
                 </button>

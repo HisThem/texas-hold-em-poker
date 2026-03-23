@@ -25,7 +25,7 @@ export const Chip: React.FC<ChipProps> = ({ value, showValue = true, compact = f
       style={{
         ...style,
         boxShadow: '0 3px 0 rgba(0,0,0,0.6)', // Thicker side of the chip
-        fontSize: compact ? (value >= 100 ? '7px' : '8px') : value >= 100 ? '8px' : '10px'
+        fontSize: compact ? (value >= 100 ? '8px' : '9px') : value >= 100 ? '9px' : '11px'
       }}
     >
       <div className="absolute inset-0 rounded-full border border-dashed border-white/30 pointer-events-none"></div>
@@ -85,14 +85,14 @@ export const ChipStack: React.FC<ChipStackProps> = ({ amount, orientation = 'hor
             </motion.div>
           ))}
           {stack.count > 8 && (
-            <div className={`absolute left-1/2 -translate-x-1/2 font-bold text-yellow-400 z-50 ${compact ? '-top-3 text-[7px]' : '-top-4 text-[8px]'}`}>
+            <div className={`absolute left-1/2 -translate-x-1/2 font-bold text-yellow-400 z-50 ${compact ? '-top-3 text-[8px]' : '-top-4 text-[9px]'}`}>
               +{stack.count - 8}
             </div>
           )}
         </div>
       ))}
       {/* Value Label - Positioned to the right of the entire stack group */}
-      <div className={`absolute font-bold text-white bg-black/70 rounded-full whitespace-nowrap border border-white/10 shadow-xl z-[100] ${compact ? 'top-full mt-1 left-1/2 -translate-x-1/2 text-[8px] px-1.5 py-0.5' : 'left-full ml-2 text-[10px] px-2 py-0.5'}`}>
+      <div className={`absolute font-bold text-white bg-black/70 rounded-full whitespace-nowrap border border-white/10 shadow-xl z-[100] ${compact ? 'top-full mt-1 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5' : 'left-full ml-2 text-xs px-2 py-0.5'}`}>
         ${amount}
       </div>
     </div>

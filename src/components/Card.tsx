@@ -28,14 +28,14 @@ export const CardComponent: React.FC<CardProps> = ({ suit, rank, hidden, compact
     ? 'w-9 h-13 sm:w-12 sm:h-16 rounded-md'
     : 'w-12 h-16 sm:w-16 sm:h-24 rounded-lg';
   const paddingClass = compact ? 'p-1' : 'p-1 sm:p-2';
-  const cornerTextClass = compact ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-lg';
-  const suitTextClass = compact ? 'text-base sm:text-xl bottom-1 right-1' : 'text-xl sm:text-3xl bottom-1 right-1 sm:bottom-2 sm:right-2';
+  const cornerTextClass = compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-xl';
+  const suitTextClass = compact ? 'text-lg sm:text-2xl bottom-1 right-1' : 'text-2xl sm:text-4xl bottom-1 right-1 sm:bottom-2 sm:right-2';
 
   if (hidden) {
     return (
       <div className={`${cardSizeClass} bg-blue-800 border-2 border-white shadow-lg flex items-center justify-center overflow-hidden relative ${className}`}>
         <div className="w-full h-full opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
-        <div className={`absolute text-white/10 font-bold select-none ${compact ? 'text-2xl sm:text-3xl' : 'text-4xl'}`}>♠</div>
+        <div className={`absolute text-white/10 font-bold select-none ${compact ? 'text-3xl sm:text-4xl' : 'text-5xl'}`}>♠</div>
       </div>
     );
   }
