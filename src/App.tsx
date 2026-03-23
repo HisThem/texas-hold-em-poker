@@ -40,14 +40,24 @@ export default function App() {
     subtitle: "Texas Hold'em Poker"
   });
   const [betAmount, setBetAmount] = useState(BIG_BLIND);
-  const [isMobile, setIsMobile] = useState(false);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const syncViewport = () => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    return () => window.removeEventListener('resize', syncViewport);
   }, []);
+
+  const isMobile = viewport.width < 768;
+  const isShortViewport = viewport.height > 0 && viewport.height < 520;
+  const isCompactLayout = isMobile || isShortViewport;
+  const isUltraCompact = viewport.height > 0 && viewport.height < 430;
+  const tableTilt = isCompactLayout ? 26 : 35;
+  const tableScale = isUltraCompact ? 0.68 : isCompactLayout ? 0.82 : 1;
 
   const initGame = useCallback((numPlayers: number = 6) => {
     const deck = createDeck();
@@ -335,45 +345,43 @@ export default function App() {
   const isUserTurn = gameState.currentPlayerIndex === 0 && gameState.phase !== 'waiting' && gameState.phase !== 'showdown';
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white font-sans overflow-hidden flex flex-col">
-      {/* Header */}
-      <header className="p-4 bg-slate-800/50 backdrop-blur-md border-b border-white/10 flex justify-between items-center z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Coins className="text-white" size={24} />
+    <div className="h-[100dvh] bg-slate-900 text-white font-sans overflow-hidden relative">
+      {/* Floating Top Controls */}
+      <div className={`absolute top-3 left-3 right-3 z-50 flex items-start justify-between pointer-events-none ${isCompactLayout ? 'top-2 left-2 right-2' : ''}`}>
+        <div className={`pointer-events-auto flex items-center bg-slate-800/85 backdrop-blur-md border border-white/10 shadow-xl ${isCompactLayout ? 'gap-2 px-2.5 py-1.5 rounded-2xl' : 'gap-3 px-3 py-2 rounded-3xl'}`}>
+          <div className={`${isCompactLayout ? 'w-7 h-7' : 'w-9 h-9'} bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20`}>
+            <Coins className="text-white" size={isCompactLayout ? 16 : 20} />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">Poker Pro</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-slate-700/50 px-3 py-1.5 rounded-full border border-white/5">
-            <Coins size={16} className="text-yellow-400" />
-            <span className="font-mono font-bold">${user?.chips || 0}</span>
+          <div className="flex flex-col leading-none">
+            <span className={`${isCompactLayout ? 'text-[10px]' : 'text-xs'} uppercase tracking-[0.2em] text-white/45`}>Bankroll</span>
+            <span className={`${isCompactLayout ? 'text-sm' : 'text-base'} font-mono font-bold text-yellow-400`}>${user?.chips || 0}</span>
           </div>
-          <button 
-            onClick={() => initGame()}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
-            title="Reset Game"
-          >
-            <RotateCcw size={20} />
-          </button>
         </div>
-      </header>
+
+        <button 
+          onClick={() => initGame()}
+          className={`pointer-events-auto bg-slate-800/85 backdrop-blur-md border border-white/10 hover:bg-white/10 rounded-full shadow-xl transition-colors ${isCompactLayout ? 'p-2' : 'p-3'}`}
+          title="Reset Game"
+        >
+          <RotateCcw size={isCompactLayout ? 16 : 18} />
+        </button>
+      </div>
 
       {/* Game Table */}
-      <main className="flex-1 relative flex items-center justify-center p-4 sm:p-16 perspective-[1500px] overflow-hidden">
+      <main className={`h-full relative flex items-center justify-center perspective-[1500px] overflow-hidden ${isCompactLayout ? 'px-2 py-2 sm:px-4' : 'p-4 sm:p-16'}`}>
         {/* The Table Wrapper with 3D Rotation (No clipping) */}
         <div 
-          className="relative w-full max-w-5xl aspect-[16/9] flex items-center justify-center transition-transform duration-700"
+          className="relative w-full max-w-5xl max-h-full aspect-[16/9] flex items-center justify-center transition-transform duration-700"
           style={{ 
-            transform: `rotateX(35deg) scale(${isMobile ? 0.75 : 1})`,
+            transform: `rotateX(${tableTilt}deg) scale(${tableScale})`,
             transformStyle: 'preserve-3d'
           }}
         >
           {/* Visual Table Surface (Felt, Border, Shadow) */}
-          <div className="absolute inset-0 bg-emerald-800 rounded-[200px] border-[12px] border-amber-900 shadow-[0_50px_100px_rgba(0,0,0,0.6),inset_0_0_50px_rgba(0,0,0,0.3)] pointer-events-none"></div>
+          <div className={`absolute inset-0 bg-emerald-800 ${isCompactLayout ? 'rounded-[140px] border-[8px]' : 'rounded-[200px] border-[12px]'} border-amber-900 shadow-[0_50px_100px_rgba(0,0,0,0.6),inset_0_0_50px_rgba(0,0,0,0.3)] pointer-events-none`}></div>
           
           {/* Inner Rail */}
-          <div className="absolute inset-4 rounded-[180px] border-2 border-emerald-700/50 pointer-events-none"></div>
+          <div className={`absolute ${isCompactLayout ? 'inset-3 rounded-[126px]' : 'inset-4 rounded-[180px]'} border-2 border-emerald-700/50 pointer-events-none`}></div>
 
           {/* Game Phase/Message - Printed on the felt */}
           <div className="absolute inset-0 z-0 pointer-events-none select-none flex items-center justify-center overflow-hidden" style={{ transform: 'translateZ(1px)' }}>
@@ -385,13 +393,13 @@ export default function App() {
                   animate={{ opacity: 0.2, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.2 }}
                   transition={{ duration: 0.4 }}
-                  className="text-center w-full px-12"
+                  className={`text-center w-full ${isCompactLayout ? 'px-6' : 'px-12'}`}
                 >
-                  <div className="text-white text-[7vw] sm:text-[13vw] font-black uppercase tracking-tighter leading-none whitespace-nowrap opacity-30 select-none">
+                  <div className={`text-white font-black uppercase tracking-tighter leading-none whitespace-nowrap opacity-30 select-none ${isCompactLayout ? 'text-[6vw] sm:text-[9vw]' : 'text-[7vw] sm:text-[13vw]'}`}>
                     {gameMessage.title}
                   </div>
-                  {gameMessage.subtitle && (
-                    <div className="text-white text-lg sm:text-2xl font-bold uppercase tracking-[0.5em] mt-2 opacity-50">
+                  {gameMessage.subtitle && !isUltraCompact && (
+                    <div className={`text-white font-bold uppercase mt-2 opacity-50 ${isCompactLayout ? 'text-xs sm:text-sm tracking-[0.25em]' : 'text-lg sm:text-2xl tracking-[0.5em]'}`}>
                       {gameMessage.subtitle}
                     </div>
                   )}
@@ -401,7 +409,7 @@ export default function App() {
           </div>
 
           {/* Community Cards */}
-          <div className="flex gap-2 sm:gap-4 z-10" style={{ transform: 'translateZ(10px)' }}>
+          <div className={`flex z-10 ${isCompactLayout ? 'gap-1.5 sm:gap-2' : 'gap-2 sm:gap-4'}`} style={{ transform: 'translateZ(10px)' }}>
             <AnimatePresence>
               {gameState.communityCards.map((card, i) => (
                 <motion.div
@@ -410,21 +418,21 @@ export default function App() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <CardComponent suit={card.suit} rank={card.rank} />
+                  <CardComponent suit={card.suit} rank={card.rank} compact={isCompactLayout} />
                 </motion.div>
               ))}
               {Array.from({ length: 5 - gameState.communityCards.length }).map((_, i) => (
-                <div key={`empty-${i}`} className="w-12 h-16 sm:w-16 sm:h-24 rounded-lg border-2 border-emerald-700/30 bg-emerald-900/20"></div>
+                <div key={`empty-${i}`} className={`${isCompactLayout ? 'w-9 h-13 sm:w-12 sm:h-16 rounded-md' : 'w-12 h-16 sm:w-16 sm:h-24 rounded-lg'} border-2 border-emerald-700/30 bg-emerald-900/20`}></div>
               ))}
             </AnimatePresence>
           </div>
 
           {/* Pot Display */}
-          <div className="absolute top-[60%] left-1/2 -translate-x-1/2 flex flex-col items-center" style={{ transform: 'translateZ(20px)' }}>
-            <div className="text-emerald-200/50 uppercase text-[10px] sm:text-xs font-bold tracking-widest mb-1">Total Pot</div>
-            <div className="bg-black/40 backdrop-blur-sm px-4 py-1 rounded-full border border-white/10 flex items-center gap-2">
-              <Coins size={14} className="text-yellow-400" />
-              <span className="text-lg sm:text-2xl font-mono font-bold text-yellow-400">${gameState.pot}</span>
+          <div className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center ${isCompactLayout ? 'top-[62%]' : 'top-[60%]'}`} style={{ transform: 'translateZ(20px)' }}>
+            <div className={`text-emerald-200/50 uppercase font-bold tracking-widest mb-1 ${isCompactLayout ? 'text-[8px]' : 'text-[10px] sm:text-xs'}`}>Total Pot</div>
+            <div className={`bg-black/40 backdrop-blur-sm rounded-full border border-white/10 flex items-center gap-2 ${isCompactLayout ? 'px-3 py-0.5' : 'px-4 py-1'}`}>
+              <Coins size={isCompactLayout ? 12 : 14} className="text-yellow-400" />
+              <span className={`${isCompactLayout ? 'text-sm sm:text-lg' : 'text-lg sm:text-2xl'} font-mono font-bold text-yellow-400`}>${gameState.pot}</span>
             </div>
           </div>
 
@@ -432,13 +440,13 @@ export default function App() {
           {gameState.players.map((player, i) => {
             // Define positions for 6 players in a landscape-friendly layout
             // Adjusted for 3D perspective: cards closer to edge, chips in front
-            const positions = isMobile ? [
-              { info: { left: '28%', top: '95%' }, cards: { left: '52%', top: '95%' }, chips: { left: '52%', top: '78%' }, orient: 'horizontal' }, // P0: Bottom Center (User)
-              { info: { left: '100%', top: '65%' }, cards: { left: '84%', top: '65%' }, chips: { left: '72%', top: '65%' }, orient: 'vertical' },   // P1: Right Bottom
-              { info: { left: '100%', top: '35%' }, cards: { left: '84%', top: '35%' }, chips: { left: '72%', top: '35%' }, orient: 'vertical' },   // P2: Right Top
-              { info: { left: '28%', top: '5%' }, cards: { left: '52%', top: '5%' }, chips: { left: '52%', top: '25%' }, orient: 'horizontal' }, // P3: Top Center
-              { info: { left: '0%', top: '35%' }, cards: { left: '16%', top: '35%' }, chips: { left: '28%', top: '35%' }, orient: 'vertical' },    // P4: Left Top
-              { info: { left: '0%', top: '65%' }, cards: { left: '16%', top: '65%' }, chips: { left: '28%', top: '65%' }, orient: 'vertical' },    // P5: Left Bottom
+            const positions = isCompactLayout ? [
+              { info: { left: '31%', top: '90%' }, cards: { left: '51%', top: '84%' }, chips: { left: '51%', top: '73%' }, orient: 'horizontal' },
+              { info: { left: '91%', top: '66%' }, cards: { left: '78%', top: '64%' }, chips: { left: '69%', top: '64%' }, orient: 'vertical' },
+              { info: { left: '91%', top: '34%' }, cards: { left: '78%', top: '36%' }, chips: { left: '69%', top: '36%' }, orient: 'vertical' },
+              { info: { left: '31%', top: '10%' }, cards: { left: '51%', top: '16%' }, chips: { left: '51%', top: '28%' }, orient: 'horizontal' },
+              { info: { left: '9%', top: '34%' }, cards: { left: '22%', top: '36%' }, chips: { left: '31%', top: '36%' }, orient: 'vertical' },
+              { info: { left: '9%', top: '66%' }, cards: { left: '22%', top: '64%' }, chips: { left: '31%', top: '64%' }, orient: 'vertical' },
             ] : [
               { info: { left: '28%', top: '92%' }, cards: { left: '52%', top: '92%' }, chips: { left: '52%', top: '78%' }, orient: 'horizontal' }, // P0: Bottom Center (User)
               { info: { left: '105%', top: '65%' }, cards: { left: '88%', top: '65%' }, chips: { left: '76%', top: '65%' }, orient: 'vertical' },   // P1: Right Bottom
@@ -460,31 +468,33 @@ export default function App() {
                   style={{ 
                     left: pos.info.left, 
                     top: pos.info.top, 
-                    transform: 'translate(-50%, -50%) translateZ(40px) rotateX(-35deg)', // Lift and counter-rotate
+                    transform: `translate(-50%, -50%) translateZ(40px) rotateX(-${tableTilt}deg)`,
                   }}
                 >
-                  <div className={`flex ${pos.orient === 'vertical' ? 'flex-col' : 'flex-row'} items-center gap-2 p-1.5 sm:p-2 rounded-2xl bg-slate-800/90 backdrop-blur-md border shadow-2xl ${
-                    pos.orient === 'vertical' ? 'min-w-[80px] sm:min-w-[100px] py-2 sm:py-3' : 'min-w-[120px] sm:min-w-[140px]'
+                  <div className={`flex ${pos.orient === 'vertical' ? 'flex-col' : 'flex-row'} items-center ${isCompactLayout ? 'gap-1.5' : 'gap-2'} ${isCompactLayout ? 'p-1.5' : 'p-1.5 sm:p-2'} rounded-2xl bg-slate-800/90 backdrop-blur-md border shadow-2xl ${
+                    pos.orient === 'vertical'
+                      ? isCompactLayout ? 'min-w-[64px] py-1.5' : 'min-w-[80px] sm:min-w-[100px] py-2 sm:py-3'
+                      : isCompactLayout ? 'min-w-[96px]' : 'min-w-[120px] sm:min-w-[140px]'
                   } ${
                     isCurrent ? 'border-yellow-400 ring-2 ring-yellow-400/20 scale-105' : 
                     isWinner ? 'border-emerald-400' : 'border-white/10'
                   }`}>
                     {/* Avatar */}
-                    <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center relative flex-shrink-0 ${
+                    <div className={`${isCompactLayout ? 'w-7 h-7' : 'w-8 h-8 sm:w-12 sm:h-12'} rounded-full border-2 flex items-center justify-center relative flex-shrink-0 ${
                       isCurrent ? 'border-yellow-400 bg-yellow-400/20' : 
                       isWinner ? 'border-emerald-400 bg-emerald-400/20' : 
                       player.isFolded ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-white/20 bg-slate-900'
                     }`}>
-                      <User size={isMobile ? 16 : 20} className={player.isFolded ? 'text-slate-500' : 'text-white'} />
+                      <User size={isCompactLayout ? 14 : isMobile ? 16 : 20} className={player.isFolded ? 'text-slate-500' : 'text-white'} />
                       {player.isDealer && (
-                        <div className="absolute -right-1 -top-1 w-4 h-4 sm:w-5 sm:h-5 bg-white text-black rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-bold border border-slate-900">D</div>
+                        <div className={`absolute -right-1 -top-1 bg-white text-black rounded-full flex items-center justify-center font-bold border border-slate-900 ${isCompactLayout ? 'w-3.5 h-3.5 text-[7px]' : 'w-4 h-4 sm:w-5 sm:h-5 text-[8px] sm:text-[9px]'}`}>D</div>
                       )}
                     </div>
 
                     {/* Name & Chips */}
                     <div className={`flex flex-col justify-center overflow-hidden ${pos.orient === 'vertical' ? 'items-center' : ''}`}>
-                      <div className="text-[11px] sm:text-xs font-bold truncate text-white/90 w-full text-center">{player.name}</div>
-                      <div className="text-[10px] sm:text-xs text-emerald-400 font-mono font-bold">${player.chips}</div>
+                      <div className={`${isCompactLayout ? 'text-[9px]' : 'text-[11px] sm:text-xs'} font-bold truncate text-white/90 w-full text-center`}>{player.name}</div>
+                      <div className={`${isCompactLayout ? 'text-[8px]' : 'text-[10px] sm:text-xs'} text-emerald-400 font-mono font-bold`}>${player.chips}</div>
                     </div>
 
                     {/* Action Bubble */}
@@ -492,7 +502,7 @@ export default function App() {
                       <motion.div 
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-slate-900 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg whitespace-nowrap"
+                        className={`absolute left-1/2 -translate-x-1/2 bg-white text-slate-900 font-bold rounded-full shadow-lg whitespace-nowrap ${isCompactLayout ? '-top-5 text-[8px] px-1.5 py-0.5' : '-top-6 text-[9px] px-2 py-0.5'}`}
                       >
                         {player.lastAction}
                       </motion.div>
@@ -502,7 +512,7 @@ export default function App() {
 
                 {/* Player Cards - ON the table, closer to edge */}
                 <div 
-                  className="absolute z-20 flex -space-x-6"
+                  className={`absolute z-20 flex ${isCompactLayout ? '-space-x-4' : '-space-x-6'}`}
                   style={{ 
                     left: pos.cards.left, 
                     top: pos.cards.top, 
@@ -518,8 +528,9 @@ export default function App() {
                       <CardComponent 
                         suit={card.suit} 
                         rank={card.rank} 
+                        compact={isCompactLayout}
                         hidden={player.id !== 'user' && gameState.phase !== 'showdown'} 
-                        className={`scale-75 sm:scale-90 ${player.isFolded ? 'grayscale opacity-30' : 'shadow-xl'}`}
+                        className={`${isCompactLayout ? 'scale-90' : 'scale-75 sm:scale-90'} ${player.isFolded ? 'grayscale opacity-30' : 'shadow-xl'}`}
                       />
                     </motion.div>
                   ))}
@@ -535,81 +546,79 @@ export default function App() {
                       transform: 'translate(-50%, -50%) translateZ(15px) rotateX(-15deg)' 
                     }}
                   >
-                    <ChipStack amount={player.bet} orientation={pos.orient as any} />
+                    <ChipStack amount={player.bet} orientation={pos.orient as any} compact={isCompactLayout} />
                   </div>
                 )}
               </React.Fragment>
             );
           })}
         </div>
-      </main>
 
-      {/* Controls Bar */}
-      <footer className="p-4 sm:p-6 bg-slate-800/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 z-30">
-        {gameState.phase === 'waiting' || gameState.phase === 'showdown' ? (
-          <button 
-            onClick={startHand}
-            className="group relative flex items-center gap-3 bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20"
-          >
-            <Play fill="currentColor" size={20} />
-            {gameState.phase === 'showdown' ? 'Next Hand' : 'Start Hand'}
-          </button>
-        ) : (
-          <>
-            {/* Action Buttons */}
-            <div className="flex gap-2 sm:gap-4 w-full sm:w-auto justify-center">
-              <button 
-                disabled={!isUserTurn}
-                onClick={() => handleAction('fold')}
-                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-bold transition-all border border-white/5 text-sm sm:text-base"
-              >
-                Fold
-              </button>
-              <button 
-                disabled={!isUserTurn}
-                onClick={() => handleAction(gameState.currentBet > (user?.bet || 0) ? 'call' : 'check')}
-                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 border border-white/10 text-sm sm:text-base"
-              >
-                {gameState.currentBet > (user?.bet || 0) ? `Call $${gameState.currentBet - (user?.bet || 0)}` : 'Check'}
-              </button>
-            </div>
-
-            {/* Raise Controls */}
-            <div className="flex items-center gap-2 sm:gap-4 bg-slate-900/50 p-2 rounded-2xl border border-white/5 w-full sm:w-auto justify-center">
-              <div className="flex flex-col items-center px-2 sm:px-4">
-                <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raise To</span>
-                <span className="text-base sm:text-xl font-mono font-bold text-yellow-400">${betAmount}</span>
-              </div>
-              <div className="flex gap-1 overflow-x-auto no-scrollbar">
-                {[10, 50, 100].map(val => (
-                  <button 
-                    key={val}
-                    disabled={!isUserTurn}
-                    onClick={() => setBetAmount(prev => Math.min(user?.chips || 0, prev + val))}
-                    className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-bold transition-colors flex-shrink-0"
-                  >
-                    +{val}
-                  </button>
-                ))}
+        {/* Floating Action Controls */}
+        <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center ${isCompactLayout ? 'gap-2 bottom-2 w-[min(96vw,720px)]' : 'gap-3 w-[min(92vw,900px)]'}`}>
+          {gameState.phase === 'waiting' || gameState.phase === 'showdown' ? (
+            <button 
+              onClick={startHand}
+              className={`group relative flex items-center bg-emerald-500/95 hover:bg-emerald-400 text-white rounded-2xl font-bold transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20 border border-white/10 ${isCompactLayout ? 'gap-2 px-5 py-2 text-base' : 'gap-3 px-8 py-3 text-lg'}`}
+            >
+              <Play fill="currentColor" size={isCompactLayout ? 18 : 20} />
+              {gameState.phase === 'showdown' ? 'Next Hand' : 'Start Hand'}
+            </button>
+          ) : (
+            <div className="flex w-full items-end justify-between gap-2">
+              <div className={`flex items-center bg-slate-900/78 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl ${isCompactLayout ? 'gap-1.5 px-1.5 py-1.5' : 'gap-2 px-2 py-2'}`}>
                 <button 
                   disabled={!isUserTurn}
-                  onClick={() => setBetAmount(gameState.currentBet + BIG_BLIND)}
-                  className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-bold transition-colors flex-shrink-0"
+                  onClick={() => handleAction('fold')}
+                  className={`bg-slate-800/90 backdrop-blur-md hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all border border-white/10 shadow-xl whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
                 >
-                  Min
+                  Fold
+                </button>
+                <button 
+                  disabled={!isUserTurn}
+                  onClick={() => handleAction(gameState.currentBet > (user?.bet || 0) ? 'call' : 'check')}
+                  className={`bg-blue-600/95 backdrop-blur-md hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all shadow-xl shadow-blue-600/20 border border-white/10 whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
+                >
+                  {gameState.currentBet > (user?.bet || 0) ? `Call $${gameState.currentBet - (user?.bet || 0)}` : 'Check'}
                 </button>
               </div>
-              <button 
-                disabled={!isUserTurn || betAmount <= gameState.currentBet}
-                onClick={() => handleAction('raise', betAmount)}
-                className="px-4 sm:px-6 py-2 sm:py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 border border-white/10 text-sm sm:text-base"
-              >
-                Raise
-              </button>
+
+              <div className={`flex items-center justify-center bg-slate-900/78 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl ${isCompactLayout ? 'gap-1.5 px-1.5 py-1.5' : 'gap-2 px-2 py-2'}`}>
+                <div className={`flex flex-col items-center ${isCompactLayout ? 'px-0.5' : 'px-1.5'}`}>
+                  <span className={`${isCompactLayout ? 'text-[7px]' : 'text-[9px]'} font-bold text-slate-400 uppercase tracking-widest`}>Raise To</span>
+                  <span className={`${isCompactLayout ? 'text-sm' : 'text-lg'} font-mono font-bold text-yellow-400`}>${betAmount}</span>
+                </div>
+                <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                  {[5, 10, 50, 100].map(val => (
+                    <button 
+                      key={val}
+                      disabled={!isUserTurn}
+                      onClick={() => setBetAmount(prev => Math.min(user?.chips || 0, prev + val))}
+                      className={`${isCompactLayout ? 'w-7 h-7 text-[9px]' : 'w-9 h-9 text-[11px]'} bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex items-center justify-center font-bold transition-colors flex-shrink-0`}
+                    >
+                      +{val}
+                    </button>
+                  ))}
+                  <button 
+                    disabled={!isUserTurn}
+                    onClick={() => setBetAmount(gameState.currentBet + BIG_BLIND)}
+                    className={`${isCompactLayout ? 'w-7 h-7 text-[9px]' : 'w-9 h-9 text-[11px]'} bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex items-center justify-center font-bold transition-colors flex-shrink-0`}
+                    >
+                      Min
+                    </button>
+                </div>
+                <button 
+                  disabled={!isUserTurn || betAmount <= gameState.currentBet}
+                  onClick={() => handleAction('raise', betAmount)}
+                  className={`bg-emerald-600/95 backdrop-blur-md hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl font-bold transition-all shadow-xl shadow-emerald-600/20 border border-white/10 whitespace-nowrap ${isCompactLayout ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
+                >
+                  Raise
+                </button>
+              </div>
             </div>
-          </>
-        )}
-      </footer>
+          )}
+        </div>
+      </main>
 
       {/* Background Decoration */}
       <div className="fixed inset-0 pointer-events-none -z-10 opacity-20">
