@@ -1,0 +1,621 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
+import { 
+  Player, 
+  GameState, 
+  Card, 
+  createDeck, 
+  GamePhase, 
+  CHIP_VALUES 
+} from './types';
+import { evaluateHand } from './engine';
+import { CardComponent } from './components/Card';
+import { ChipStack } from './components/Chips';
+import { User, Trophy, Coins, RotateCcw, Play } from 'lucide-react';
+
+const INITIAL_CHIPS = 1000;
+const SMALL_BLIND = 10;
+const BIG_BLIND = 20;
+
+const PLAYER_NAMES = ['You', 'Alex', 'Jordan', 'Casey', 'Riley', 'Quinn'];
+
+export default function App() {
+  const [gameState, setGameState] = useState<GameState>({
+    players: [],
+    communityCards: [],
+    pot: 0,
+    phase: 'waiting',
+    currentPlayerIndex: 0,
+    dealerIndex: 0,
+    smallBlind: SMALL_BLIND,
+    bigBlind: BIG_BLIND,
+    currentBet: 0,
+    deck: [],
+    winners: [],
+  });
+
+  const [gameMessage, setGameMessage] = useState<{title: string, subtitle?: string}>({
+    title: "Welcome",
+    subtitle: "Texas Hold'em Poker"
+  });
+  const [betAmount, setBetAmount] = useState(BIG_BLIND);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const initGame = useCallback((numPlayers: number = 6) => {
+    const deck = createDeck();
+    const players: Player[] = Array.from({ length: numPlayers }, (_, i) => ({
+      id: i === 0 ? 'user' : `bot-${i}`,
+      name: PLAYER_NAMES[i],
+      chips: INITIAL_CHIPS,
+      bet: 0,
+      cards: [],
+      isFolded: false,
+      isAllIn: false,
+      isDealer: i === 0,
+      isSmallBlind: i === 1 % numPlayers,
+      isBigBlind: i === 2 % numPlayers,
+    }));
+
+    setGameState({
+      players,
+      communityCards: [],
+      pot: 0,
+      phase: 'waiting',
+      currentPlayerIndex: 0,
+      dealerIndex: 0,
+      smallBlind: SMALL_BLIND,
+      bigBlind: BIG_BLIND,
+      currentBet: 0,
+      deck,
+      winners: [],
+    });
+    setGameMessage({ title: "Ready?", subtitle: "Click Start Hand to begin" });
+  }, []);
+
+  useEffect(() => {
+    initGame();
+  }, [initGame]);
+
+  const startHand = () => {
+    let { players, dealerIndex, deck, smallBlind, bigBlind } = gameState;
+    deck = createDeck();
+    
+    // Move dealer
+    const newDealerIndex = (dealerIndex + 1) % players.length;
+    const sbIndex = (newDealerIndex + 1) % players.length;
+    const bbIndex = (newDealerIndex + 2) % players.length;
+
+    const newPlayers = players.map((p, i) => {
+      const cards = [deck.pop()!, deck.pop()!];
+      let bet = 0;
+      let chips = p.chips;
+
+      if (i === sbIndex) {
+        const amount = Math.min(chips, smallBlind);
+        bet = amount;
+        chips -= amount;
+      } else if (i === bbIndex) {
+        const amount = Math.min(chips, bigBlind);
+        bet = amount;
+        chips -= amount;
+      }
+
+      return {
+        ...p,
+        cards,
+        bet,
+        chips,
+        isFolded: false,
+        isAllIn: chips === 0 && bet > 0,
+        isDealer: i === newDealerIndex,
+        isSmallBlind: i === sbIndex,
+        isBigBlind: i === bbIndex,
+        lastAction: i === sbIndex ? 'SB' : i === bbIndex ? 'BB' : undefined,
+      };
+    });
+
+    setGameState(prev => ({
+      ...prev,
+      players: newPlayers,
+      deck,
+      communityCards: [],
+      pot: newPlayers.reduce((sum, p) => sum + p.bet, 0),
+      phase: 'pre-flop',
+      currentPlayerIndex: (bbIndex + 1) % players.length,
+      currentBet: bigBlind,
+      dealerIndex: newDealerIndex,
+      winners: [],
+      winningHand: undefined,
+    }));
+    setGameMessage({ title: "Pre-flop", subtitle: "Place your bets!" });
+  };
+
+  const nextPhase = useCallback(() => {
+    setGameState(prev => {
+      const { phase, deck, communityCards, players } = prev;
+      let newPhase: GamePhase = phase;
+      let newCommunity = [...communityCards];
+      let newDeck = [...deck];
+
+      // Collect bets into pot
+      const roundPot = players.reduce((sum, p) => sum + p.bet, 0);
+      const updatedPlayers = players.map(p => ({ ...p, bet: 0, lastAction: undefined }));
+
+      if (phase === 'pre-flop') {
+        newPhase = 'flop';
+        newCommunity = [newDeck.pop()!, newDeck.pop()!, newDeck.pop()!];
+        setGameMessage({ title: "Flop", subtitle: "Three cards revealed" });
+      } else if (phase === 'flop') {
+        newPhase = 'turn';
+        newCommunity.push(newDeck.pop()!);
+        setGameMessage({ title: "Turn", subtitle: "Fourth card revealed" });
+      } else if (phase === 'turn') {
+        newPhase = 'river';
+        newCommunity.push(newDeck.pop()!);
+        setGameMessage({ title: "River", subtitle: "Final card revealed" });
+      } else if (phase === 'river') {
+        newPhase = 'showdown';
+        setGameMessage({ title: "Showdown", subtitle: "Reveal your cards!" });
+      }
+
+      return {
+        ...prev,
+        phase: newPhase,
+        communityCards: newCommunity,
+        deck: newDeck,
+        pot: prev.pot + roundPot,
+        players: updatedPlayers,
+        currentBet: 0,
+        currentPlayerIndex: (prev.dealerIndex + 1) % players.length,
+      };
+    });
+  }, []);
+
+  const handleAction = useCallback((action: 'fold' | 'check' | 'call' | 'raise', amount: number = 0) => {
+    setGameState(prev => {
+      const { players, currentPlayerIndex, currentBet, pot } = prev;
+      const player = players[currentPlayerIndex];
+      let newPlayers = [...players];
+      let newPot = pot;
+      let newCurrentBet = currentBet;
+      let actionText = '';
+
+      if (action === 'fold') {
+        newPlayers[currentPlayerIndex] = { ...player, isFolded: true, lastAction: 'Fold' };
+        actionText = 'Fold';
+      } else if (action === 'check' || action === 'call') {
+        const callAmount = currentBet - player.bet;
+        const actualCall = Math.min(player.chips, callAmount);
+        newPlayers[currentPlayerIndex] = {
+          ...player,
+          chips: player.chips - actualCall,
+          bet: player.bet + actualCall,
+          isAllIn: player.chips - actualCall === 0,
+          lastAction: callAmount === 0 ? 'Check' : 'Call',
+        };
+        actionText = callAmount === 0 ? 'Check' : 'Call';
+      } else if (action === 'raise') {
+        const raiseTo = amount;
+        const addedBet = raiseTo - player.bet;
+        newPlayers[currentPlayerIndex] = {
+          ...player,
+          chips: player.chips - addedBet,
+          bet: raiseTo,
+          isAllIn: player.chips - addedBet === 0,
+          lastAction: `Raise ${raiseTo}`,
+        };
+        newCurrentBet = raiseTo;
+        actionText = `Raise to ${raiseTo}`;
+      }
+
+      // Check if round is over
+      const activePlayers = newPlayers.filter(p => !p.isFolded && !p.isAllIn);
+      const allBetsEqual = newPlayers.every(p => p.isFolded || p.isAllIn || p.bet === newCurrentBet);
+      const everyoneActed = newPlayers.every(p => p.isFolded || p.isAllIn || p.lastAction !== undefined);
+
+      let nextIndex = (currentPlayerIndex + 1) % players.length;
+      while (newPlayers[nextIndex].isFolded || newPlayers[nextIndex].isAllIn) {
+        nextIndex = (nextIndex + 1) % players.length;
+        if (nextIndex === currentPlayerIndex) break;
+      }
+
+      const roundOver = (allBetsEqual && everyoneActed) || activePlayers.length <= 1;
+
+      return {
+        ...prev,
+        players: newPlayers,
+        currentBet: newCurrentBet,
+        currentPlayerIndex: nextIndex,
+      };
+    });
+  }, []);
+
+  // Bot Logic
+  useEffect(() => {
+    if (gameState.phase !== 'waiting' && gameState.phase !== 'showdown') {
+      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+      if (currentPlayer && currentPlayer.id.startsWith('bot-')) {
+        const timer = setTimeout(() => {
+          const { currentBet } = gameState;
+          const callAmount = currentBet - currentPlayer.bet;
+          
+          // Simple bot AI
+          const rand = Math.random();
+          if (callAmount > currentPlayer.chips * 0.5 && rand < 0.3) {
+            handleAction('fold');
+          } else if (callAmount > 0) {
+            handleAction('call');
+          } else {
+            if (rand > 0.8) {
+              handleAction('raise', currentBet + BIG_BLIND);
+            } else {
+              handleAction('check');
+            }
+          }
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [gameState.currentPlayerIndex, gameState.phase, handleAction]);
+
+  // Phase transition check
+  useEffect(() => {
+    if (gameState.phase === 'waiting' || gameState.phase === 'showdown') return;
+
+    const activePlayers = gameState.players.filter(p => !p.isFolded);
+    if (activePlayers.length === 1) {
+      // Everyone folded
+      const winner = activePlayers[0];
+      const totalPot = gameState.pot + gameState.players.reduce((s, p) => s + p.bet, 0);
+      setGameState(prev => ({
+        ...prev,
+        phase: 'showdown',
+        winners: [winner.id],
+        players: prev.players.map(p => p.id === winner.id ? { ...p, chips: p.chips + totalPot } : p),
+        pot: 0,
+      }));
+      setGameMessage({ title: "Winner!", subtitle: `${winner.name} wins the pot!` });
+      return;
+    }
+
+    const allBetsEqual = gameState.players.every(p => p.isFolded || p.isAllIn || p.bet === gameState.currentBet);
+    const everyoneActed = gameState.players.every(p => p.isFolded || p.isAllIn || p.lastAction !== undefined);
+
+    if (allBetsEqual && everyoneActed) {
+      if (gameState.phase === 'river') {
+        // Showdown
+        const showdownPlayers = gameState.players.filter(p => !p.isFolded);
+        const results = showdownPlayers.map(p => ({
+          id: p.id,
+          result: evaluateHand([...p.cards, ...gameState.communityCards])
+        }));
+        
+        results.sort((a, b) => b.result.value - a.result.value);
+        const bestValue = results[0].result.value;
+        const winners = results.filter(r => r.result.value === bestValue);
+        
+        const totalPot = gameState.pot + gameState.players.reduce((s, p) => s + p.bet, 0);
+        const winAmount = Math.floor(totalPot / winners.length);
+
+        setGameState(prev => ({
+          ...prev,
+          phase: 'showdown',
+          winners: winners.map(w => w.id),
+          winningHand: results[0].result.name,
+          players: prev.players.map(p => {
+            if (winners.some(w => w.id === p.id)) {
+              return { ...p, chips: p.chips + winAmount };
+            }
+            return p;
+          }),
+          pot: 0,
+        }));
+        
+        if (winners.some(w => w.id === 'user')) {
+          confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+        
+        const winnerNames = winners.map(w => gameState.players.find(p => p.id === w.id)?.name).join(', ');
+        setGameMessage({ title: "Showdown!", subtitle: `${winnerNames} wins with ${results[0].result.name}` });
+      } else {
+        nextPhase();
+      }
+    }
+  }, [gameState.players, gameState.currentBet, gameState.phase, nextPhase]);
+
+  const user = gameState.players.find(p => p.id === 'user');
+  const isUserTurn = gameState.currentPlayerIndex === 0 && gameState.phase !== 'waiting' && gameState.phase !== 'showdown';
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-white font-sans overflow-hidden flex flex-col">
+      {/* Header */}
+      <header className="p-4 bg-slate-800/50 backdrop-blur-md border-b border-white/10 flex justify-between items-center z-10">
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <Coins className="text-white" size={24} />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight">Poker Pro</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-slate-700/50 px-3 py-1.5 rounded-full border border-white/5">
+            <Coins size={16} className="text-yellow-400" />
+            <span className="font-mono font-bold">${user?.chips || 0}</span>
+          </div>
+          <button 
+            onClick={() => initGame()}
+            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            title="Reset Game"
+          >
+            <RotateCcw size={20} />
+          </button>
+        </div>
+      </header>
+
+      {/* Game Table */}
+      <main className="flex-1 relative flex items-center justify-center p-4 sm:p-16 perspective-[1500px] overflow-hidden">
+        {/* The Table Wrapper with 3D Rotation (No clipping) */}
+        <div 
+          className="relative w-full max-w-5xl aspect-[16/9] flex items-center justify-center transition-transform duration-700"
+          style={{ 
+            transform: `rotateX(35deg) scale(${isMobile ? 0.75 : 1})`,
+            transformStyle: 'preserve-3d'
+          }}
+        >
+          {/* Visual Table Surface (Felt, Border, Shadow) */}
+          <div className="absolute inset-0 bg-emerald-800 rounded-[200px] border-[12px] border-amber-900 shadow-[0_50px_100px_rgba(0,0,0,0.6),inset_0_0_50px_rgba(0,0,0,0.3)] pointer-events-none"></div>
+          
+          {/* Inner Rail */}
+          <div className="absolute inset-4 rounded-[180px] border-2 border-emerald-700/50 pointer-events-none"></div>
+
+          {/* Game Phase/Message - Printed on the felt */}
+          <div className="absolute inset-0 z-0 pointer-events-none select-none flex items-center justify-center overflow-hidden" style={{ transform: 'translateZ(1px)' }}>
+            <AnimatePresence mode="wait">
+              {gameMessage && (
+                <motion.div 
+                  key={gameMessage.title}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 0.2, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.2 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-center w-full px-12"
+                >
+                  <div className="text-white text-[7vw] sm:text-[13vw] font-black uppercase tracking-tighter leading-none whitespace-nowrap opacity-30 select-none">
+                    {gameMessage.title}
+                  </div>
+                  {gameMessage.subtitle && (
+                    <div className="text-white text-lg sm:text-2xl font-bold uppercase tracking-[0.5em] mt-2 opacity-50">
+                      {gameMessage.subtitle}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Community Cards */}
+          <div className="flex gap-2 sm:gap-4 z-10" style={{ transform: 'translateZ(10px)' }}>
+            <AnimatePresence>
+              {gameState.communityCards.map((card, i) => (
+                <motion.div
+                  key={`${card.rank}-${card.suit}`}
+                  initial={{ opacity: 0, y: -20, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <CardComponent suit={card.suit} rank={card.rank} />
+                </motion.div>
+              ))}
+              {Array.from({ length: 5 - gameState.communityCards.length }).map((_, i) => (
+                <div key={`empty-${i}`} className="w-12 h-16 sm:w-16 sm:h-24 rounded-lg border-2 border-emerald-700/30 bg-emerald-900/20"></div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {/* Pot Display */}
+          <div className="absolute top-[60%] left-1/2 -translate-x-1/2 flex flex-col items-center" style={{ transform: 'translateZ(20px)' }}>
+            <div className="text-emerald-200/50 uppercase text-[10px] sm:text-xs font-bold tracking-widest mb-1">Total Pot</div>
+            <div className="bg-black/40 backdrop-blur-sm px-4 py-1 rounded-full border border-white/10 flex items-center gap-2">
+              <Coins size={14} className="text-yellow-400" />
+              <span className="text-lg sm:text-2xl font-mono font-bold text-yellow-400">${gameState.pot}</span>
+            </div>
+          </div>
+
+          {/* Players */}
+          {gameState.players.map((player, i) => {
+            // Define positions for 6 players in a landscape-friendly layout
+            // Adjusted for 3D perspective: cards closer to edge, chips in front
+            const positions = isMobile ? [
+              { info: { left: '28%', top: '95%' }, cards: { left: '52%', top: '95%' }, chips: { left: '52%', top: '78%' }, orient: 'horizontal' }, // P0: Bottom Center (User)
+              { info: { left: '100%', top: '65%' }, cards: { left: '84%', top: '65%' }, chips: { left: '72%', top: '65%' }, orient: 'vertical' },   // P1: Right Bottom
+              { info: { left: '100%', top: '35%' }, cards: { left: '84%', top: '35%' }, chips: { left: '72%', top: '35%' }, orient: 'vertical' },   // P2: Right Top
+              { info: { left: '28%', top: '5%' }, cards: { left: '52%', top: '5%' }, chips: { left: '52%', top: '25%' }, orient: 'horizontal' }, // P3: Top Center
+              { info: { left: '0%', top: '35%' }, cards: { left: '16%', top: '35%' }, chips: { left: '28%', top: '35%' }, orient: 'vertical' },    // P4: Left Top
+              { info: { left: '0%', top: '65%' }, cards: { left: '16%', top: '65%' }, chips: { left: '28%', top: '65%' }, orient: 'vertical' },    // P5: Left Bottom
+            ] : [
+              { info: { left: '28%', top: '92%' }, cards: { left: '52%', top: '92%' }, chips: { left: '52%', top: '78%' }, orient: 'horizontal' }, // P0: Bottom Center (User)
+              { info: { left: '105%', top: '65%' }, cards: { left: '88%', top: '65%' }, chips: { left: '76%', top: '65%' }, orient: 'vertical' },   // P1: Right Bottom
+              { info: { left: '105%', top: '35%' }, cards: { left: '88%', top: '35%' }, chips: { left: '76%', top: '35%' }, orient: 'vertical' },   // P2: Right Top
+              { info: { left: '28%', top: '8%' }, cards: { left: '52%', top: '8%' }, chips: { left: '52%', top: '25%' }, orient: 'horizontal' }, // P3: Top Center
+              { info: { left: '-5%', top: '35%' }, cards: { left: '12%', top: '35%' }, chips: { left: '24%', top: '35%' }, orient: 'vertical' },    // P4: Left Top
+              { info: { left: '-5%', top: '65%' }, cards: { left: '12%', top: '65%' }, chips: { left: '24%', top: '65%' }, orient: 'vertical' },    // P5: Left Bottom
+            ];
+
+            const pos = positions[i] || positions[0];
+            const isCurrent = gameState.currentPlayerIndex === i && gameState.phase !== 'showdown';
+            const isWinner = gameState.winners.includes(player.id);
+
+            return (
+              <React.Fragment key={player.id}>
+                {/* Player Info - OUTSIDE the table */}
+                <div 
+                  className="absolute z-40 transition-all duration-300"
+                  style={{ 
+                    left: pos.info.left, 
+                    top: pos.info.top, 
+                    transform: 'translate(-50%, -50%) translateZ(40px) rotateX(-35deg)', // Lift and counter-rotate
+                  }}
+                >
+                  <div className={`flex ${pos.orient === 'vertical' ? 'flex-col' : 'flex-row'} items-center gap-2 p-1.5 sm:p-2 rounded-2xl bg-slate-800/90 backdrop-blur-md border shadow-2xl ${
+                    pos.orient === 'vertical' ? 'min-w-[80px] sm:min-w-[100px] py-2 sm:py-3' : 'min-w-[120px] sm:min-w-[140px]'
+                  } ${
+                    isCurrent ? 'border-yellow-400 ring-2 ring-yellow-400/20 scale-105' : 
+                    isWinner ? 'border-emerald-400' : 'border-white/10'
+                  }`}>
+                    {/* Avatar */}
+                    <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center relative flex-shrink-0 ${
+                      isCurrent ? 'border-yellow-400 bg-yellow-400/20' : 
+                      isWinner ? 'border-emerald-400 bg-emerald-400/20' : 
+                      player.isFolded ? 'border-slate-600 bg-slate-900 opacity-50' : 'border-white/20 bg-slate-900'
+                    }`}>
+                      <User size={isMobile ? 16 : 20} className={player.isFolded ? 'text-slate-500' : 'text-white'} />
+                      {player.isDealer && (
+                        <div className="absolute -right-1 -top-1 w-4 h-4 sm:w-5 sm:h-5 bg-white text-black rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-bold border border-slate-900">D</div>
+                      )}
+                    </div>
+
+                    {/* Name & Chips */}
+                    <div className={`flex flex-col justify-center overflow-hidden ${pos.orient === 'vertical' ? 'items-center' : ''}`}>
+                      <div className="text-[11px] sm:text-xs font-bold truncate text-white/90 w-full text-center">{player.name}</div>
+                      <div className="text-[10px] sm:text-xs text-emerald-400 font-mono font-bold">${player.chips}</div>
+                    </div>
+
+                    {/* Action Bubble */}
+                    {player.lastAction && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-slate-900 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg whitespace-nowrap"
+                      >
+                        {player.lastAction}
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Player Cards - ON the table, closer to edge */}
+                <div 
+                  className="absolute z-20 flex -space-x-6"
+                  style={{ 
+                    left: pos.cards.left, 
+                    top: pos.cards.top, 
+                    transform: 'translate(-50%, -50%) translateZ(5px)' 
+                  }}
+                >
+                  {player.cards.map((card, ci) => (
+                    <motion.div
+                      key={ci}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0, rotate: ci === 0 ? -5 : 5 }}
+                    >
+                      <CardComponent 
+                        suit={card.suit} 
+                        rank={card.rank} 
+                        hidden={player.id !== 'user' && gameState.phase !== 'showdown'} 
+                        className={`scale-75 sm:scale-90 ${player.isFolded ? 'grayscale opacity-30' : 'shadow-xl'}`}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Player Bet Chips - ON the table, in front of cards */}
+                {player.bet > 0 && (
+                  <div 
+                    className="absolute z-30 pointer-events-none"
+                    style={{ 
+                      left: pos.chips.left, 
+                      top: pos.chips.top, 
+                      transform: 'translate(-50%, -50%) translateZ(15px) rotateX(-15deg)' 
+                    }}
+                  >
+                    <ChipStack amount={player.bet} orientation={pos.orient as any} />
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </main>
+
+      {/* Controls Bar */}
+      <footer className="p-4 sm:p-6 bg-slate-800/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 z-30">
+        {gameState.phase === 'waiting' || gameState.phase === 'showdown' ? (
+          <button 
+            onClick={startHand}
+            className="group relative flex items-center gap-3 bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-3 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20"
+          >
+            <Play fill="currentColor" size={20} />
+            {gameState.phase === 'showdown' ? 'Next Hand' : 'Start Hand'}
+          </button>
+        ) : (
+          <>
+            {/* Action Buttons */}
+            <div className="flex gap-2 sm:gap-4 w-full sm:w-auto justify-center">
+              <button 
+                disabled={!isUserTurn}
+                onClick={() => handleAction('fold')}
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-bold transition-all border border-white/5 text-sm sm:text-base"
+              >
+                Fold
+              </button>
+              <button 
+                disabled={!isUserTurn}
+                onClick={() => handleAction(gameState.currentBet > (user?.bet || 0) ? 'call' : 'check')}
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 border border-white/10 text-sm sm:text-base"
+              >
+                {gameState.currentBet > (user?.bet || 0) ? `Call $${gameState.currentBet - (user?.bet || 0)}` : 'Check'}
+              </button>
+            </div>
+
+            {/* Raise Controls */}
+            <div className="flex items-center gap-2 sm:gap-4 bg-slate-900/50 p-2 rounded-2xl border border-white/5 w-full sm:w-auto justify-center">
+              <div className="flex flex-col items-center px-2 sm:px-4">
+                <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raise To</span>
+                <span className="text-base sm:text-xl font-mono font-bold text-yellow-400">${betAmount}</span>
+              </div>
+              <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                {[10, 50, 100].map(val => (
+                  <button 
+                    key={val}
+                    disabled={!isUserTurn}
+                    onClick={() => setBetAmount(prev => Math.min(user?.chips || 0, prev + val))}
+                    className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-bold transition-colors flex-shrink-0"
+                  >
+                    +{val}
+                  </button>
+                ))}
+                <button 
+                  disabled={!isUserTurn}
+                  onClick={() => setBetAmount(gameState.currentBet + BIG_BLIND)}
+                  className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-bold transition-colors flex-shrink-0"
+                >
+                  Min
+                </button>
+              </div>
+              <button 
+                disabled={!isUserTurn || betAmount <= gameState.currentBet}
+                onClick={() => handleAction('raise', betAmount)}
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 border border-white/10 text-sm sm:text-base"
+              >
+                Raise
+              </button>
+            </div>
+          </>
+        )}
+      </footer>
+
+      {/* Background Decoration */}
+      <div className="fixed inset-0 pointer-events-none -z-10 opacity-20">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500 blur-[150px] rounded-full"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500 blur-[150px] rounded-full"></div>
+      </div>
+    </div>
+  );
+}
