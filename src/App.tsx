@@ -343,6 +343,17 @@ export default function App() {
 
   const user = gameState.players.find(p => p.id === 'user');
   const isUserTurn = gameState.currentPlayerIndex === 0 && gameState.phase !== 'waiting' && gameState.phase !== 'showdown';
+  const maxRaiseTo = (user?.chips || 0) + (user?.bet || 0);
+  const minRaiseTo = Math.min(maxRaiseTo, gameState.currentBet + BIG_BLIND);
+
+  useEffect(() => {
+    if (!maxRaiseTo) return;
+    setBetAmount(prev => {
+      if (prev < minRaiseTo) return minRaiseTo;
+      if (prev > maxRaiseTo) return maxRaiseTo;
+      return prev;
+    });
+  }, [maxRaiseTo, minRaiseTo]);
 
   return (
     <div className="h-[100dvh] bg-slate-900 text-white font-sans overflow-hidden relative">
@@ -352,7 +363,7 @@ export default function App() {
         <div 
           className="relative w-full max-w-5xl max-h-full aspect-[16/9] flex items-center justify-center transition-transform duration-700"
           style={{ 
-            transform: `rotateX(${tableTilt}deg) scale(${tableScale})`,
+            transform: `translateY(-5%) rotateX(${tableTilt}deg) scale(${tableScale})`,
             transformStyle: 'preserve-3d'
           }}
         >
@@ -421,11 +432,11 @@ export default function App() {
             // Adjusted for 3D perspective: cards closer to edge, chips in front
             const positions = isCompactLayout ? [
               { info: { left: '36%', top: '93%' }, cards: { left: '51%', top: '92%' }, chips: { left: '66%', top: '85%' }, orient: 'horizontal' },
-              { info: { left: '91%', top: '66%' }, cards: { left: '78%', top: '64%' }, chips: { left: '69%', top: '64%' }, orient: 'horizontal' },
-              { info: { left: '91%', top: '34%' }, cards: { left: '78%', top: '36%' }, chips: { left: '69%', top: '36%' }, orient: 'horizontal' },
+              { info: { left: '96%', top: '66%' }, cards: { left: '83%', top: '64%' }, chips: { left: '74%', top: '64%' }, orient: 'horizontal' },
+              { info: { left: '96%', top: '34%' }, cards: { left: '83%', top: '36%' }, chips: { left: '74%', top: '36%' }, orient: 'horizontal' },
               { info: { left: '36%', top: '10%' }, cards: { left: '51%', top: '16%' }, chips: { left: '51%', top: '28%' }, orient: 'horizontal' },
-              { info: { left: '9%', top: '34%' }, cards: { left: '22%', top: '36%' }, chips: { left: '31%', top: '36%' }, orient: 'horizontal' },
-              { info: { left: '9%', top: '66%' }, cards: { left: '22%', top: '64%' }, chips: { left: '31%', top: '64%' }, orient: 'horizontal' },
+              { info: { left: '4%', top: '34%' }, cards: { left: '17%', top: '36%' }, chips: { left: '26%', top: '36%' }, orient: 'horizontal' },
+              { info: { left: '4%', top: '66%' }, cards: { left: '17%', top: '64%' }, chips: { left: '26%', top: '64%' }, orient: 'horizontal' },
             ] : [
               { info: { left: '28%', top: '92%' }, cards: { left: '52%', top: '97%' }, chips: { left: '66%', top: '85%' }, orient: 'horizontal' }, // P0: Bottom Center (User)
               { info: { left: '105%', top: '65%' }, cards: { left: '88%', top: '65%' }, chips: { left: '76%', top: '65%' }, orient: 'horizontal' },   // P1: Right Bottom
@@ -562,7 +573,8 @@ export default function App() {
                 </button>
               </div>
 
-              <div className={`flex items-center justify-center bg-slate-900/78 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl ${isCompactLayout ? 'gap-1.5 px-1.5 py-1.5' : 'gap-2 px-2 py-2'}`}>
+              <div className={`flex flex-col bg-slate-900/78 backdrop-blur-xl border border-white/10 shadow-xl rounded-2xl ${isCompactLayout ? 'gap-1.5 px-1.5 py-1.5' : 'gap-2 px-2 py-2'}`}>
+                <div className="flex items-center justify-center gap-2">
                 <div className={`flex flex-col items-center ${isCompactLayout ? 'px-0.5' : 'px-1.5'}`}>
                   <span className={`${isCompactLayout ? 'text-[8px]' : 'text-[10px]'} font-bold text-slate-400 uppercase tracking-widest`}>Raise To</span>
                   <span className={`${isCompactLayout ? 'text-base' : 'text-xl'} font-mono font-bold text-yellow-400`}>${betAmount}</span>
@@ -582,9 +594,9 @@ export default function App() {
                     disabled={!isUserTurn}
                     onClick={() => setBetAmount(gameState.currentBet + BIG_BLIND)}
                     className={`${isCompactLayout ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-xs'} bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl flex items-center justify-center font-bold transition-colors flex-shrink-0`}
-                    >
-                      Min
-                    </button>
+                  >
+                    Min
+                  </button>
                 </div>
                 <button 
                   disabled={!isUserTurn || betAmount <= gameState.currentBet}
@@ -593,6 +605,17 @@ export default function App() {
                 >
                   Raise
                 </button>
+              </div>
+                <input
+                  type="range"
+                  min={minRaiseTo || 0}
+                  max={maxRaiseTo || 0}
+                  step={5}
+                  value={Math.min(Math.max(betAmount, minRaiseTo || 0), maxRaiseTo || 0)}
+                  disabled={!isUserTurn || maxRaiseTo <= 0}
+                  onChange={(e) => setBetAmount(Number(e.target.value))}
+                  className={`w-full accent-emerald-500 ${!isUserTurn || maxRaiseTo <= 0 ? 'opacity-30' : ''}`}
+                />
               </div>
             </div>
           )}
