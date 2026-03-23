@@ -98,6 +98,30 @@ export class RoomsService {
     if (!/^\d{6}$/.test(roomCode)) throw new Error('Room code must be 6 digits.');
 
     const room = this.rooms.get(roomCode) ?? this.createRoom(roomCode);
+    const sameNamedHumans = room.players
+      .filter((player) => !player.isBot && player.name === name)
+      .sort((left, right) => left.seat - right.seat);
+
+    if (sameNamedHumans.some((player) => player.connected)) {
+      throw new Error('This name is already in use by an online player in the room.');
+    }
+
+    const reclaimablePlayer = sameNamedHumans.find((player) => !player.connected);
+    if (reclaimablePlayer) {
+      const playerToken = randomUUID();
+      if (reclaimablePlayer.token) {
+        this.database.deleteSession(reclaimablePlayer.token);
+      }
+      reclaimablePlayer.token = playerToken;
+      reclaimablePlayer.connected = false;
+      reclaimablePlayer.socketId = undefined;
+      this.persistRoom(room);
+      return {
+        playerToken,
+        roomSnapshot: this.buildRoomSnapshot(room, reclaimablePlayer.id),
+      };
+    }
+
     if (room.players.length >= room.config.maxPlayers) {
       throw new Error('This room is full.');
     }

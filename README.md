@@ -14,19 +14,20 @@ This project now contains:
 npm install
 ```
 
-2. Start the backend
+2. Start both frontend and backend
+
+```bash
+npm run dev
+```
+
+3. Open `http://localhost:3000`
+
+If you want to run them separately for debugging:
 
 ```bash
 npm run dev:server
-```
-
-3. Start the frontend
-
-```bash
 npm run dev:client
 ```
-
-4. Open `http://localhost:3000`
 
 ## Current multiplayer flow
 

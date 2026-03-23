@@ -29,6 +29,9 @@ export default defineConfig(({mode}) => {
           ws: true,
         },
       },
+      allowedHosts: [
+        'substratospheric-tressed-shaun.ngrok-free.dev',
+      ],
     },
   };
 });

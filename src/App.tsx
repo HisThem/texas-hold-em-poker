@@ -102,7 +102,7 @@ export default function App() {
   const hostCanEditSeats = Boolean(isHost && (!room?.game || room.game.phase === 'showdown'));
   const isHandInProgress = Boolean(room?.game && room.game.phase !== 'showdown');
   const settingsDirty = !areRoomConfigsEqual(settingsDraft, settingsBaseline);
-  const invalidPlayerCountDuringHand = isHandInProgress && settingsDraft.maxPlayers > room.playerCount;
+  const invalidPlayerCountDuringHand = isHandInProgress && settingsDraft.maxPlayers < room.playerCount;
   const canSaveSettings = settingsDirty && !invalidPlayerCountDuringHand;
   const maxRaiseTo = actions.maxRaiseTo ?? 0;
   const minRaiseTo = actions.minRaiseTo ?? 0;
@@ -239,7 +239,7 @@ export default function App() {
   const applySettingsUpdate = (updater: (current: RoomConfig) => RoomConfig) => {
     setSettingsDraft((current) => {
       const nextConfig = { ...updater(current), fillBots: false };
-      if (!(isHandInProgress && nextConfig.maxPlayers > (room?.playerCount ?? 0))) {
+      if (!(isHandInProgress && nextConfig.maxPlayers < (room?.playerCount ?? 0))) {
         socketRef.current?.emit('room:update-config', { config: nextConfig });
       }
       return nextConfig;
@@ -287,8 +287,8 @@ export default function App() {
   };
 
   const saveSettings = () => {
-    if (room?.game && room.game.phase !== 'showdown' && settingsDraft.maxPlayers > room.playerCount) {
-      showError('当前牌局进行中时，最大人数不能大于当前已在桌上的人数。');
+    if (room?.game && room.game.phase !== 'showdown' && settingsDraft.maxPlayers < room.playerCount) {
+      showError('当前牌局进行中时，最大人数不能小于当前已在桌上的人数。');
       return;
     }
     const committed = cloneConfig(settingsDraft);
@@ -730,7 +730,7 @@ export default function App() {
                 </p>
                 {invalidPlayerCountDuringHand && (
                   <p className="mt-2 text-sm leading-6 text-amber-200">
-                    During an active hand, max players cannot be saved above the number of seated players currently at the table.
+                    During an active hand, max players cannot be saved below the number of seated players currently at the table.
                   </p>
                 )}
               </div>
